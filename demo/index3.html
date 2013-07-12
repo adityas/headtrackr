@@ -36,8 +36,13 @@
 			var plane;
 			
 			var selected_icon = undefined;
+			var point_light;
+			var target;
+			var eyePosition;
 			
 			lookAt = [10, 100, 0]
+			eyePosition = [0,0,50];
+			
 			realisticAbsoluteCameraControl = function(camera, scaling, eyePosition, params) {
 
 				if (params === undefined) params = {};
@@ -92,21 +97,53 @@
 				xs = [-20, -10, 0, 10, 20];
 				ys = [-10, 0, 10];
 //				zs = [-10, 0, 10];
-				zs = [1.8];
-				var default_color = 0x000000;
-				var material = function (alpha) { return new THREE.MeshBasicMaterial({color: default_color, transparent: true, opacity: alpha}); }
+				zs = [5];
+				var default_color = 0x222222;
+//				var material = function (alpha) { return new THREE.MeshBasicMaterial({color: default_color, transparent: true, opacity: alpha}); }
+//				var material = function (alpha) { return new THREE.MeshLambertMaterial({color: default_color, transparent: true, opacity: alpha}); }
+				var material = function (alpha) { return new THREE.MeshPhongMaterial({color: default_color, shininess: 5, specular: 0x777777, transparent:true, opacity: alpha }); }
+				
 				target = placeTarget(0,0,0,size, material(0.0));
 //				target = undefined;
 				for (i = 0; i < xs.length; i++) {
 					for (j = 0; j < ys.length; j++) {
 						for (k = 0; k < zs.length; k++) {
-								new_object = placeTarget(xs[i],ys[j],zs[k],0.01,size, material(0.5));
+								new_object = placeTarget(xs[i],ys[j],zs[k],0.001,size, material(0.5));
 								objects.push(new_object);
-								new_object.shadow = placeTarget(xs[i],ys[j],0,01,size, material(0.2));
+								new_object.column = placeTarget(xs[i],ys[j],zs[k]/2,zs[k],size, material(0.3));
+								new_object.shadow = placeTarget(xs[i],ys[j],0, 0.001,size, material(0.3));
+								
 								new_object.highlight_color = Math.random() * 0xffffff;
 						}
 					}
 				}
+				
+				// add subtle ambient lighting
+				      var ambientLight = new THREE.AmbientLight(0x222222);
+				      scene.add(ambientLight);
+
+				      // directional lighting
+				      pointLight = new THREE.PointLight( 0xffffff, 1, 100 );
+				      light_z = 1.4*eyePosition[2]
+				      pointLight.position.set(0, 0, light_z)
+				      scene.add(pointLight);
+				
+				      light_z = 1
+				      pointLight2 = new THREE.PointLight( 0xffffff, 1, 100 );
+				      pointLight2.position.set(50, 0, light_z)
+				      scene.add(pointLight2);
+				      pointLight2 = new THREE.PointLight( 0xffffff, 1, 100 );
+				      pointLight2.position.set(-50, 0, light_z)
+				      scene.add(pointLight2);
+				      pointLight2 = new THREE.PointLight( 0xffffff, 1, 100 );
+				      pointLight2.position.set(0, 50, light_z)
+				      scene.add(pointLight2);
+				      pointLight2 = new THREE.PointLight( 0xffffff, 1, 100 );
+				      pointLight2.position.set(0, -50, light_z)
+				      scene.add(pointLight2);
+
+				
+				
 				renderer = new THREE.WebGLRenderer({ clearAlpha: 0 });
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				container.appendChild( renderer.domElement );
@@ -135,7 +172,6 @@
 
 		params = {damping : 1.0}
 		scaling = 1;
-		eyePosition = [0,0,50];
 		if (params.screenHeight === undefined) {
 			var screenHeight_cms = 20.5;
 		} else {
@@ -151,8 +187,8 @@
 			if (init_offset == undefined) { 
 				init_offset = {}; init_offset.x = 0; init_offset.y = event.y;
 			}
-			event.x = 10*(event.x - init_offset.x);
-			event.y = 10*(event.y - init_offset.y);
+			event.x = 20*(event.x - init_offset.x);
+			event.y = 20*(event.y - init_offset.y);
 			var xOffset = event.x > 0 ? 0 : -event.x * 2 * params.damping * scaling;
 			var yOffset = event.y < 0 ? 0 : event.y * 2 * params.damping * scaling;
 
@@ -162,9 +198,12 @@
 //			camera.lookAt(new THREE.Vector3(lookAt));
 			target.position.set(camera_x, camera_y, 0)
             camera.lookAt(target.position);
-
+            light_z = 1.4*eyePosition[2];
+            pointLight.position.set(camera_x, camera_y, light_z)
             offset_factor = (50/eyePosition[2])*1.04*2/3
+//            offset_factor = 1.0
 			camera.setViewOffset(ww, wh, -offset_factor*(event.x * scaling * params.damping ), offset_factor*(event.y * scaling * params.damping), ww, wh);
+//			camera.fov = Math.atan((wh/2)/(Math.abs(eyePosition[2]*scaling)))*360/Math.PI;
 			
 			camera.updateProjectionMatrix();
 			// reset headTracker if space is pressed
@@ -204,11 +243,15 @@
 				if ((selected_icon != undefined) || (selected_icon == intersects[ 0 ].object)) { 
 					selected_icon.material.color.setHex( selected_icon.default_color );
 					if (selected_icon.shadow != undefined) { selected_icon.shadow.material.color.setHex( selected_icon.default_color ); }
+					if (selected_icon.column != undefined) { selected_icon.column.material.color.setHex( selected_icon.default_color ); }
+
 				}
 				if (selected_icon != intersects[ 0 ].object) {
 					selected_icon = intersects[ 0 ].object;
 		        	selected_icon.material.color.setHex( selected_icon.highlight_color );
 		        	if (selected_icon.shadow != undefined) { selected_icon.shadow.material.color.setHex( selected_icon.highlight_color ); }
+		        	if (selected_icon.column != undefined) { selected_icon.column.material.color.setHex( selected_icon.highlight_color ); }
+		
 				} else {
 					selected_icon = undefined;
 				}

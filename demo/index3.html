@@ -11,6 +11,8 @@
 				background-color: #f0f0f0;
 				margin: 0px;
 				overflow: hidden;
+				background-image: url('toucan.png');
+				background-position:center; 
 			}
 		</style>
 		<script src="./targets_files/Three.js"></script>
@@ -18,6 +20,7 @@
 		<script src="./targets_files/Detector.js"></script>
 		<script src="../../tquery/build/tquery.js"></script>
 		<script src="tquery.headtrackr.js"></script>
+		<script src="threex.domevent.js"></script>
 		
 		<script src="./targets_files/headtrackr.js"></script>
 		
@@ -44,6 +47,8 @@
 			var camera, scene, renderer;
 			var plane;
 			
+			var selected_icon = undefined;
+			
 			lookAt = [10, 100, 0]
 			realisticAbsoluteCameraControl = function(camera, scaling, eyePosition, params) {
 
@@ -64,7 +69,7 @@
 				var wh = screenHeight_cms * scaling;
 				var ww = wh * camera.aspect;
 			}
-			
+			var objects = [];
 			function init() {
 
 				container = document.createElement( 'div' );
@@ -74,20 +79,21 @@
 				
 				init_fov = 33
 				camera = new THREE.PerspectiveCamera( init_fov, window.innerWidth / window.innerHeight, 1, 10000 );
+//				camera = new THREE.OrthographicCamera( window.innerWidth / -50, window.innerWidth / 50, window.innerHeight / -50, window.innerHeight / 50, 1, 10000 );
 				camera.position.set([0, 0, 50]);
 				scene.add( camera );
 				
-				var placeTarget = function(x,y,z,width) {
+				var placeTarget = function(x,y,z,width, material) {
 						
 						// Cylinder
-						var segementsHeight = 20;
-						var cylinder = new THREE.Mesh( new THREE.CylinderGeometry(width,width,0.1,segementsHeight,1,false), new THREE.MeshBasicMaterial( { color : 0xeeeeee} ) );
+						var segementsHeight = 100;
+//						var cylinder = new THREE.Mesh( new THREE.CylinderGeometry(width,width,0.1,segementsHeight,1,false), new THREE.MeshBasicMaterial( { color : 0xeeeeee} ) );
+						var cylinder = new THREE.Mesh( new THREE.CylinderGeometry(width,width,0.1,segementsHeight,1,false), material );
 						cylinder.position.x = x;
 						cylinder.rotation.x = Math.PI/2;
 						cylinder.position.y = y;
 						cylinder.position.z = z;
 						scene.add( cylinder );
-						
 //						var geometry = new THREE.Geometry();
 //						geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( 0, 0, -1000 ) ) );
 //						geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( 0, 0, z ) ) );
@@ -97,37 +103,39 @@
 //						scene.add( line );
 						return cylinder
 				}
-				
-				xs = [-10, 0, 10]
-				ys = [-10, 0, 10]
-				zs = [-10, 0, 10]
-				target = undefined;
+				size = 2;
+				xs = [-20, -10, 0, 10, 20];
+				ys = [-10, 0, 10];
+//				zs = [-10, 0, 10];
+				zs = [2];
+				var default_color = 0x000000;
+				var material = function (alpha) { return new THREE.MeshBasicMaterial({color: default_color, transparent: true, opacity: alpha}); }
+				target = placeTarget(0,0,0,size, material(0.0));
+//				target = undefined;
 				for (i = 0; i < xs.length; i++) {
 					for (j = 0; j < ys.length; j++) {
 						for (k = 0; k < zs.length; k++) {
-							new_object = placeTarget(xs[i],ys[j],zs[k],1);
-							if ((xs[i] == 0) && (ys[j] == 0) && (zs[k] == 0)) {
-								target = new_object;
-							}
+								new_object = placeTarget(xs[i],ys[j],zs[k],size, material(0.5));
+								objects.push(new_object);
+								new_object.shadow = placeTarget(xs[i],ys[j],0,size, material(0.2));
+								new_object.highlight_color = Math.random() * 0xffffff;
 						}
 					}
 				}
-				renderer = new THREE.WebGLRenderer({ clearAlpha: 1 });
+				renderer = new THREE.WebGLRenderer({ clearAlpha: 0 });
 				renderer.setSize( window.innerWidth, window.innerHeight );
-
 				container.appendChild( renderer.domElement );
-				
 			}
 			
-			var stats = new Stats();
-			stats.domElement.style.position = 'absolute';
-			stats.domElement.style.top = '0px';
-			document.body.appendChild( stats.domElement );
+//			var stats = new Stats();
+//			stats.domElement.style.position = 'absolute';
+//			stats.domElement.style.top = '0px';
+//			document.body.appendChild( stats.domElement );
 			
 			function animate() {
 
 				renderer.render(scene, camera);
-				stats.update();
+//				stats.update();
 
 				requestAnimationFrame( animate );
 
@@ -151,11 +159,14 @@
 		var ww = wh * camera.aspect;
 		
 		r = realisticAbsoluteCameraControl(camera, scaling, eyePosition, new THREE.Vector3(0,0,0), params);
-
+    	init_offset = undefined;
 		headTracker.addEventListener("found", function(event){
 			// update camera
-			event.x = 10*event.x;
-			event.y = 10*event.y;
+			if (init_offset == undefined) { 
+				init_offset = {}; init_offset.x = 0; init_offset.y = event.y;
+			}
+			event.x = 5*(event.x - init_offset.x);
+			event.y = 5*(event.y - init_offset.y);
 			var xOffset = event.x > 0 ? 0 : -event.x * 2 * params.damping * scaling;
 			var yOffset = event.y < 0 ? 0 : event.y * 2 * params.damping * scaling;
 
@@ -163,20 +174,71 @@
 			camera_y = eyePosition[1] + (event.y * scaling * params.damping );
 			camera.position.set(camera_x, camera_y, camera.position.z)
 //			camera.lookAt(new THREE.Vector3(lookAt));
+			target.position.set(camera_x, camera_y, 0)
             camera.lookAt(target.position);
 
 			camera.updateProjectionMatrix();
 			// reset headTracker if space is pressed
 			document.addEventListener('keydown', function(event){
 				// only if the key is space
-				if( event.keyCode !== ' '.charCodeAt(0) )	return;
-				// reset the head tracker
-				headTracker.reset();
+				if( event.keyCode == ' '.charCodeAt(0) ) {
+					// reset the head tracker
+					headTracker.reset();
+					init_offset = undefined;
+				}
+				if( event.keyCode == 'v'.charCodeAt(0) ) {
+					// hide/show viewer
+					videoInput.style.display = (videoInput.style.display == 'block') ? 'none' : 'block'
+				}
 			});
 		});
-	</script>
-	<script>
 		
+		projector = new THREE.Projector();
+		function onDocumentMouseDown( event ) {
+
+		    event.preventDefault();
+
+		    var vector = new THREE.Vector3(
+		        ( event.clientX / window.innerWidth ) * 2 - 1,
+		      - ( event.clientY / window.innerHeight ) * 2 + 1,
+		        0.5
+		    );
+		    projector.unprojectVector( vector, camera );
+
+		    var ray = new THREE.Ray( camera.position, 
+		                             vector.subSelf( camera.position ).normalize() );
+
+		    var intersects = ray.intersectObjects( objects );
+
+		    if ( intersects.length > 0 ) {
+                console.log(intersects[ 0 ].object.material.color)
+				if ((selected_icon != undefined) || (selected_icon == intersects[ 0 ].object)) { 
+					selected_icon.material.color.setHex( selected_icon.default_color );
+					selected_icon.shadow.material.color.setHex( selected_icon.default_color );
+				}
+				if (selected_icon != intersects[ 0 ].object) {
+					selected_icon = intersects[ 0 ].object;
+		        	selected_icon.material.color.setHex( selected_icon.highlight_color );
+		        	selected_icon.shadow.material.color.setHex( selected_icon.highlight_color );
+				} else {
+					selected_icon = undefined;
+				}
+//		        var particle = new THREE.Particle( particleMaterial );
+//		        particle.position = intersects[ 0 ].point;
+//		        particle.scale.x = particle.scale.y = 8;
+//		        scene.add( particle );
+
+		    }
+
+		    /*
+		    // Parse all the faces
+		    for ( var i in intersects ) {
+		        intersects[ i ].face.material[ 0 ].color
+		            .setHex( Math.random() * 0xffffff | 0x80000000 );
+		    }
+		    */
+		}
+		document.addEventListener( 'mousedown', onDocumentMouseDown, false );
 	</script>
 	</body>
 </html>

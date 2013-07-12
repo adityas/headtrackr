@@ -19,7 +19,10 @@
 		<script src="./targets_files/Stats.js"></script>
 		<script src="./targets_files/Detector.js"></script>
 		<script src="../../tquery/build/tquery.js"></script>
+
+		<script src="CSS3DRender.js"></script>
 		<script src="tquery.headtrackr.js"></script>
+		
 		
 		<script src="./targets_files/headtrackr.js"></script>
 		
@@ -39,6 +42,10 @@
 			var point_light;
 			var target;
 			var eyePosition;
+			var cssRenderer;
+			var cssScene;
+			var last_click = 0;
+			
 			
 			lookAt = [10, 100, 0]
 			eyePosition = [0,0,50];
@@ -171,7 +178,9 @@
 
 				renderer.render(scene, camera);
 //				stats.update();
-
+				if (cssRenderer != undefined) {
+                	cssRenderer.render( cssScene, camera );
+				}
 				requestAnimationFrame( animate );
 
 			}
@@ -234,10 +243,19 @@
 					// hide/show viewer
 					headTracker._canvasView.style.display = (headTracker._canvasView.style.display == 'none') ? '' : 'none'
 				}
+				if ( event.keyCode == 'w'.charCodeAt(0) ) {
+					planeMesh.visible = planeMesh.visible ? false : true;
+					outer_planeMesh.visible = outer_planeMesh.visible ? false : true;
+				}
+				if (( event.keyCode == 'x'.charCodeAt(0) ) || ( event.keyCode == 'c'.charCodeAt(0) )) {
+					planeMesh.visible = false;
+					outer_planeMesh.visible = false;
+				}
 			});
 		});
 		
 		projector = new THREE.Projector();
+		
 		function onDocumentMouseDown( event ) {
 
 		    event.preventDefault();
@@ -253,23 +271,31 @@
 		                             vector.subSelf( camera.position ).normalize() );
 
 		    var intersects = ray.intersectObjects( objects );
-
 		    if ( intersects.length > 0 ) {
-                console.log(intersects[ 0 ].object.material.color)
-				if ((selected_icon != undefined) || (selected_icon == intersects[ 0 ].object)) { 
-					selected_icon.material.color.setHex( selected_icon.default_color );
-					if (selected_icon.shadow != undefined) { selected_icon.shadow.material.color.setHex( selected_icon.default_color ); }
-					if (selected_icon.column != undefined) { selected_icon.column.material.color.setHex( selected_icon.default_color ); }
-
-				}
-				if (selected_icon != intersects[ 0 ].object) {
-					selected_icon = intersects[ 0 ].object;
-		        	selected_icon.material.color.setHex( selected_icon.highlight_color );
-		        	if (selected_icon.shadow != undefined) { selected_icon.shadow.material.color.setHex( selected_icon.highlight_color ); }
-		        	if (selected_icon.column != undefined) { selected_icon.column.material.color.setHex( selected_icon.highlight_color ); }
-		
+				click_time = new Date().getTime();
+				just_clicked = (click_time - last_click) < 300;
+				if (intersects[0].on_click != undefined) {
+					intersects[0].on_click();
+				} else if (just_clicked && (selected_icon == intersects[ 0 ].object)) {
+					planeMesh.visible = true;
+					outer_planeMesh.visible = true;
 				} else {
-					selected_icon = undefined;
+					last_click = new Date().getTime();
+					if ((selected_icon != undefined) || (selected_icon == intersects[ 0 ].object)) { 
+						selected_icon.material.color.setHex( selected_icon.default_color );
+						if (selected_icon.shadow != undefined) { selected_icon.shadow.material.color.setHex( selected_icon.default_color ); }
+						if (selected_icon.column != undefined) { selected_icon.column.material.color.setHex( selected_icon.default_color ); }
+                	
+					}
+					if (selected_icon != intersects[ 0 ].object) {
+						selected_icon = intersects[ 0 ].object;
+		        		selected_icon.material.color.setHex( selected_icon.highlight_color );
+		        		if (selected_icon.shadow != undefined) { selected_icon.shadow.material.color.setHex( selected_icon.highlight_color ); }
+		        		if (selected_icon.column != undefined) { selected_icon.column.material.color.setHex( selected_icon.highlight_color ); }
+		        	
+					} else {
+						selected_icon = undefined;
+					}
 				}
 //		        var particle = new THREE.Particle( particleMaterial );
 //		        particle.position = intersects[ 0 ].point;
@@ -287,6 +313,41 @@
 		    */
 		}
 		document.addEventListener( 'mousedown', onDocumentMouseDown, false );
+		
+		var material = new THREE.MeshBasicMaterial({ wireframe: true, color: 0x999999 });
+		var outer_material = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 })
+		var geometry = new THREE.PlaneGeometry(30, 20, 6, 4);
+		var outer_geometry = new THREE.PlaneGeometry(32, 22, 6, 4);
+		var planeMesh = new THREE.Mesh( geometry, material );
+		var outer_planeMesh = new THREE.Mesh( outer_geometry, outer_material );
+		outer_planeMesh.on_click = function () { planeMesh.visible = false; outer_planeMesh.visible = false; }
+		//objects.push(outer_planeMesh);
+		
+		planeMesh.visible = false;
+		planeMesh.position.set(0, 0, 10.01);
+		outer_planeMesh.visible = false;
+		outer_planeMesh.position.set(0, 0, 10);
+		
+		// add it to the WebGL scene
+		scene.add(planeMesh);
+		scene.add(outer_planeMesh);
+		
+		var cssScene = new THREE.Scene();
+		// create the dom Element
+		var element = document.createElement( 'img' );
+		element.src = 'toucan.png';
+		// create the object3d for this element
+		var cssObject = new THREE.CSS3DObject( element );
+		// we reference the same position and rotation 
+		cssObject.position = planeMesh.position;
+		cssObject.rotation = planeMesh.rotation;
+		// add it to the css scene
+		cssScene.add(cssObject);
+		
+		var cssRenderer = new THREE.CSS3DRenderer();
+		cssRenderer.setSize( window.innerWidth, window.innerHeight );
+		cssRenderer.domElement.style.position = 'absolute';
+		cssRenderer.domElement.style.top = 0;
 	</script>
 	</body>
 </html>

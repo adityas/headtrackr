@@ -53,9 +53,6 @@
 				camera.position.set(eyePosition[0], eyePosition[1], eyePosition[2])
 				camera.lookAt(new THREE.Vector3(lookAt));
 //                camera.target.position.set(lookAt);
-
-				var wh = screenHeight_cms * scaling;
-				var ww = wh * camera.aspect;
 			}
 			var objects = [];
 			function init() {
@@ -71,12 +68,12 @@
 				camera.position.set([0, 0, 50]);
 				scene.add( camera );
 				
-				var placeTarget = function(x,y,z,width, material) {
+				var placeTarget = function(x,y,z,height,width, material) {
 						
 						// Cylinder
 						var segementsHeight = 100;
 //						var cylinder = new THREE.Mesh( new THREE.CylinderGeometry(width,width,0.1,segementsHeight,1,false), new THREE.MeshBasicMaterial( { color : 0xeeeeee} ) );
-						var cylinder = new THREE.Mesh( new THREE.CylinderGeometry(width,width,0.1,segementsHeight,1,false), material );
+						var cylinder = new THREE.Mesh( new THREE.CylinderGeometry(width,width,height,segementsHeight,1,false), material );
 						cylinder.position.x = x;
 						cylinder.rotation.x = Math.PI/2;
 						cylinder.position.y = y;
@@ -95,7 +92,7 @@
 				xs = [-20, -10, 0, 10, 20];
 				ys = [-10, 0, 10];
 //				zs = [-10, 0, 10];
-				zs = [2];
+				zs = [1.8];
 				var default_color = 0x000000;
 				var material = function (alpha) { return new THREE.MeshBasicMaterial({color: default_color, transparent: true, opacity: alpha}); }
 				target = placeTarget(0,0,0,size, material(0.0));
@@ -103,9 +100,9 @@
 				for (i = 0; i < xs.length; i++) {
 					for (j = 0; j < ys.length; j++) {
 						for (k = 0; k < zs.length; k++) {
-								new_object = placeTarget(xs[i],ys[j],zs[k],size, material(0.5));
+								new_object = placeTarget(xs[i],ys[j],zs[k],0.01,size, material(0.5));
 								objects.push(new_object);
-								new_object.shadow = placeTarget(xs[i],ys[j],0,size, material(0.2));
+								new_object.shadow = placeTarget(xs[i],ys[j],0,01,size, material(0.2));
 								new_object.highlight_color = Math.random() * 0xffffff;
 						}
 					}
@@ -154,8 +151,8 @@
 			if (init_offset == undefined) { 
 				init_offset = {}; init_offset.x = 0; init_offset.y = event.y;
 			}
-			event.x = 5*(event.x - init_offset.x);
-			event.y = 5*(event.y - init_offset.y);
+			event.x = 10*(event.x - init_offset.x);
+			event.y = 10*(event.y - init_offset.y);
 			var xOffset = event.x > 0 ? 0 : -event.x * 2 * params.damping * scaling;
 			var yOffset = event.y < 0 ? 0 : event.y * 2 * params.damping * scaling;
 
@@ -166,6 +163,9 @@
 			target.position.set(camera_x, camera_y, 0)
             camera.lookAt(target.position);
 
+            offset_factor = (50/eyePosition[2])*1.04*2/3
+			camera.setViewOffset(ww, wh, -offset_factor*(event.x * scaling * params.damping ), offset_factor*(event.y * scaling * params.damping), ww, wh);
+			
 			camera.updateProjectionMatrix();
 			// reset headTracker if space is pressed
 			document.addEventListener('keypress', function(event){
@@ -203,12 +203,12 @@
                 console.log(intersects[ 0 ].object.material.color)
 				if ((selected_icon != undefined) || (selected_icon == intersects[ 0 ].object)) { 
 					selected_icon.material.color.setHex( selected_icon.default_color );
-					selected_icon.shadow.material.color.setHex( selected_icon.default_color );
+					if (selected_icon.shadow != undefined) { selected_icon.shadow.material.color.setHex( selected_icon.default_color ); }
 				}
 				if (selected_icon != intersects[ 0 ].object) {
 					selected_icon = intersects[ 0 ].object;
 		        	selected_icon.material.color.setHex( selected_icon.highlight_color );
-		        	selected_icon.shadow.material.color.setHex( selected_icon.highlight_color );
+		        	if (selected_icon.shadow != undefined) { selected_icon.shadow.material.color.setHex( selected_icon.highlight_color ); }
 				} else {
 					selected_icon = undefined;
 				}

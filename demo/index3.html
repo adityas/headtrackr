@@ -1,0 +1,182 @@
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<title>targets</title>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=Edge"/>
+		<style>
+			body {
+				font-family: Monospace;
+				background-color: #f0f0f0;
+				margin: 0px;
+				overflow: hidden;
+			}
+		</style>
+		<script src="./targets_files/Three.js"></script>
+		<script src="./targets_files/Stats.js"></script>
+		<script src="./targets_files/Detector.js"></script>
+		<script src="../../tquery/build/tquery.js"></script>
+		<script src="tquery.headtrackr.js"></script>
+		
+		<script src="./targets_files/headtrackr.js"></script>
+		
+	</head>
+	<body>
+
+		<video id="vid" autoplay loop></video>
+		<script>
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+			
+			// video styling
+			var videoInput = document.getElementById('vid');
+			videoInput.style.position = 'absolute';
+			videoInput.style.top = '50px';
+			videoInput.style.zIndex = '100001';
+			videoInput.style.display = 'block';
+		</script>
+		
+		<script>
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+			// 3d model setup
+			
+			var container, stats;
+			var camera, scene, renderer;
+			var plane;
+			
+			lookAt = [10, 100, 0]
+			realisticAbsoluteCameraControl = function(camera, scaling, eyePosition, params) {
+
+				if (params === undefined) params = {};
+				if (params.screenHeight === undefined) {
+					var screenHeight_cms = 20.5;
+				} else {
+					var screenHeight_cms = params.screenHeight;
+				}
+				if (params.damping === undefined) {
+				  params.damping = 1;
+				}
+
+				camera.position.set(eyePosition[0], eyePosition[1], eyePosition[2])
+				camera.lookAt(new THREE.Vector3(lookAt));
+//                camera.target.position.set(lookAt);
+
+				var wh = screenHeight_cms * scaling;
+				var ww = wh * camera.aspect;
+			}
+			
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				scene = new THREE.Scene();
+				
+				init_fov = 33
+				camera = new THREE.PerspectiveCamera( init_fov, window.innerWidth / window.innerHeight, 1, 10000 );
+				camera.position.set([0, 0, 50]);
+				scene.add( camera );
+				
+				var placeTarget = function(x,y,z,width) {
+						
+						// Cylinder
+						var segementsHeight = 20;
+						var cylinder = new THREE.Mesh( new THREE.CylinderGeometry(width,width,0.1,segementsHeight,1,false), new THREE.MeshBasicMaterial( { color : 0xeeeeee} ) );
+						cylinder.position.x = x;
+						cylinder.rotation.x = Math.PI/2;
+						cylinder.position.y = y;
+						cylinder.position.z = z;
+						scene.add( cylinder );
+						
+//						var geometry = new THREE.Geometry();
+//						geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( 0, 0, -1000 ) ) );
+//						geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( 0, 0, z ) ) );
+//						var line = new THREE.Line( geometry, new THREE.LineBasicMaterial( { color: 0xeeeeee } ) );
+//						line.position.x = x;
+//						line.position.y = y;
+//						scene.add( line );
+						return cylinder
+				}
+				
+				xs = [-10, 0, 10]
+				ys = [-10, 0, 10]
+				zs = [-10, 0, 10]
+				target = undefined;
+				for (i = 0; i < xs.length; i++) {
+					for (j = 0; j < ys.length; j++) {
+						for (k = 0; k < zs.length; k++) {
+							new_object = placeTarget(xs[i],ys[j],zs[k],1);
+							if ((xs[i] == 0) && (ys[j] == 0) && (zs[k] == 0)) {
+								target = new_object;
+							}
+						}
+					}
+				}
+				renderer = new THREE.WebGLRenderer({ clearAlpha: 1 });
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+				container.appendChild( renderer.domElement );
+				
+			}
+			
+			var stats = new Stats();
+			stats.domElement.style.position = 'absolute';
+			stats.domElement.style.top = '0px';
+			document.body.appendChild( stats.domElement );
+			
+			function animate() {
+
+				renderer.render(scene, camera);
+				stats.update();
+
+				requestAnimationFrame( animate );
+
+			}
+			
+			init();
+			animate();
+			
+   		// create the headTracker
+			var headTracker	= tQuery.createHeadtrackr().debugView(true).start();
+
+		params = {damping : 1.0}
+		scaling = 1;
+		eyePosition = [0,0,50];
+		if (params.screenHeight === undefined) {
+			var screenHeight_cms = 20.5;
+		} else {
+			var screenHeight_cms = params.screenHeight;
+		}
+		var wh = screenHeight_cms * scaling;
+		var ww = wh * camera.aspect;
+		
+		r = realisticAbsoluteCameraControl(camera, scaling, eyePosition, new THREE.Vector3(0,0,0), params);
+
+		headTracker.addEventListener("found", function(event){
+			// update camera
+			event.x = 10*event.x;
+			event.y = 10*event.y;
+			var xOffset = event.x > 0 ? 0 : -event.x * 2 * params.damping * scaling;
+			var yOffset = event.y < 0 ? 0 : event.y * 2 * params.damping * scaling;
+
+			camera_x = eyePosition[0] + (event.x * scaling * params.damping );
+			camera_y = eyePosition[1] + (event.y * scaling * params.damping );
+			camera.position.set(camera_x, camera_y, camera.position.z)
+//			camera.lookAt(new THREE.Vector3(lookAt));
+            camera.lookAt(target.position);
+
+			camera.updateProjectionMatrix();
+			// reset headTracker if space is pressed
+			document.addEventListener('keydown', function(event){
+				// only if the key is space
+				if( event.keyCode !== ' '.charCodeAt(0) )	return;
+				// reset the head tracker
+				headTracker.reset();
+			});
+		});
+	</script>
+	<script>
+		
+	</script>
+	</body>
+</html>

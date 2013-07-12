@@ -2,7 +2,7 @@
 <!doctype html>
 <html lang="en">
 	<head>
-		<title>targets</title>
+		<title>icons</title>
 		<meta charset="utf-8">
 		<meta http-equiv="X-UA-Compatible" content="IE=Edge"/>
 		<style>
@@ -20,24 +20,12 @@
 		<script src="./targets_files/Detector.js"></script>
 		<script src="../../tquery/build/tquery.js"></script>
 		<script src="tquery.headtrackr.js"></script>
-		<script src="threex.domevent.js"></script>
 		
 		<script src="./targets_files/headtrackr.js"></script>
 		
 	</head>
 	<body>
 
-		<video id="vid" autoplay loop></video>
-		<script>
-			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
-			
-			// video styling
-			var videoInput = document.getElementById('vid');
-			videoInput.style.position = 'absolute';
-			videoInput.style.top = '50px';
-			videoInput.style.zIndex = '100001';
-			videoInput.style.display = 'block';
-		</script>
 		
 		<script>
 			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
@@ -145,7 +133,8 @@
 			animate();
 			
    		// create the headTracker
-			var headTracker	= tQuery.createHeadtrackr().debugView(true).start();
+		var headTracker	= tQuery.createHeadtrackr().debugView(true).start();
+		headTracker._canvasView.style.display = 'none';
 
 		params = {damping : 1.0}
 		scaling = 1;
@@ -179,7 +168,7 @@
 
 			camera.updateProjectionMatrix();
 			// reset headTracker if space is pressed
-			document.addEventListener('keydown', function(event){
+			document.addEventListener('keypress', function(event){
 				// only if the key is space
 				if( event.keyCode == ' '.charCodeAt(0) ) {
 					// reset the head tracker
@@ -188,7 +177,7 @@
 				}
 				if( event.keyCode == 'v'.charCodeAt(0) ) {
 					// hide/show viewer
-					videoInput.style.display = (videoInput.style.display == 'block') ? 'none' : 'block'
+					headTracker._canvasView.style.display = (headTracker._canvasView.style.display == 'none') ? '' : 'none'
 				}
 			});
 		});

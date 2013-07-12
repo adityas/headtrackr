@@ -93,11 +93,11 @@
 //						scene.add( line );
 						return cylinder
 				}
-				size = 2;
+				size = 2.2;
 				xs = [-20, -10, 0, 10, 20];
 				ys = [-10, 0, 10];
 //				zs = [-10, 0, 10];
-				zs = [5];
+				zs = [4];
 				var default_color = 0x222222;
 //				var material = function (alpha) { return new THREE.MeshBasicMaterial({color: default_color, transparent: true, opacity: alpha}); }
 //				var material = function (alpha) { return new THREE.MeshLambertMaterial({color: default_color, transparent: true, opacity: alpha}); }
@@ -141,6 +141,19 @@
 				      pointLight2 = new THREE.PointLight( 0xffffff, 1, 100 );
 				      pointLight2.position.set(0, -50, light_z)
 				      scene.add(pointLight2);
+				      pointLight2 = new THREE.PointLight( 0xffffff, 1, 100 );
+				      pointLight2.position.set(50, 50, light_z)
+				      scene.add(pointLight2);
+				      pointLight2 = new THREE.PointLight( 0xffffff, 1, 100 );
+				      pointLight2.position.set(-50, 50, light_z)
+				      scene.add(pointLight2);
+				      pointLight2 = new THREE.PointLight( 0xffffff, 1, 100 );
+				      pointLight2.position.set(-50, 50, light_z)
+				      scene.add(pointLight2);
+				      pointLight2 = new THREE.PointLight( 0xffffff, 1, 100 );
+				      pointLight2.position.set(-50, -50, light_z)
+				      scene.add(pointLight2);
+				
 
 				
 				
@@ -185,22 +198,25 @@
 		headTracker.addEventListener("found", function(event){
 			// update camera
 			if (init_offset == undefined) { 
-				init_offset = {}; init_offset.x = 0; init_offset.y = event.y;
+				init_offset = {}; init_offset.x = 0; init_offset.y = event.y; init_offset.z = 0;//event.width
 			}
 			event.x = 20*(event.x - init_offset.x);
 			event.y = 20*(event.y - init_offset.y);
+			event.z = 0;//5*(event.width - init_offset.z)
 			var xOffset = event.x > 0 ? 0 : -event.x * 2 * params.damping * scaling;
 			var yOffset = event.y < 0 ? 0 : event.y * 2 * params.damping * scaling;
-
+			var zOffset = event.y < 0 ? 0 : event.z * 2 * params.damping * scaling;
+			
 			camera_x = eyePosition[0] + (event.x * scaling * params.damping );
 			camera_y = eyePosition[1] + (event.y * scaling * params.damping );
-			camera.position.set(camera_x, camera_y, camera.position.z)
+			camera_z = eyePosition[2] + (event.z * scaling * params.damping ); //camera.position.z
+			camera.position.set(camera_x, camera_y, camera_z)
 //			camera.lookAt(new THREE.Vector3(lookAt));
 			target.position.set(camera_x, camera_y, 0)
             camera.lookAt(target.position);
             light_z = 1.4*eyePosition[2];
             pointLight.position.set(camera_x, camera_y, light_z)
-            offset_factor = (50/eyePosition[2])*1.04*2/3
+            offset_factor = (50/camera_z)*1.04*2/3
 //            offset_factor = 1.0
 			camera.setViewOffset(ww, wh, -offset_factor*(event.x * scaling * params.damping ), offset_factor*(event.y * scaling * params.damping), ww, wh);
 //			camera.fov = Math.atan((wh/2)/(Math.abs(eyePosition[2]*scaling)))*360/Math.PI;
